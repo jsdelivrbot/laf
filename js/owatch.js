@@ -90,6 +90,10 @@ function owatch(object, property, handlers, depth) {
             // Call each watcher for the current values
             var oldValue = o.__propertyValues[prop][0];
             newValue = o.__propertyValues[prop][1];
+
+            if (typeof(newValue) == 'object')
+              newValue = owatch(newValue, null, handlers);
+
             o.__watchers[prop].forEach(function(watcher) {
               try {
                 watcher.set(o, prop, oldValue, newValue);
