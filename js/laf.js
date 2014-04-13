@@ -1,57 +1,53 @@
 var owatch = require('./owatch')
   , extend = require('extend')
   , EventEmitter = require('events').EventEmitter
+  , Hogan = require('hogan.js')
 
 window.extend = extend
 
 function state(obj) {
-  if (! (this instanceof state))
-    return new state(obj);
-
   obj || (obj = {})
-
-  // event emitting
-  if (obj.on === undefined) {
-    owatch._makeHidden(obj, 'on', this.on.bind(this))
-  }
 
   var watched = owatch(obj, null, {set: function(obj, prop, oldVal, newVal) {
     console.log("SET", prop, 'from', oldVal, '-->', newVal)
-    this.emit('change', prop, newVal, oldVal)
+    watched.emit('change', prop, newVal, oldVal)
   }.bind(this)})
+
+  // 3 reserved key names: on, emit, template
+  owatch._makeHidden(watched, 'on', EventEmitter.prototype.on.bind(watched))
+  owatch._makeHidden(watched, 'emit', EventEmitter.prototype.emit.bind(watched))
+  owatch._makeHidden(watched, 'template', template.bind(watched))
 
   return watched
 }
 
-// inherit
-state.prototype = Object.create(EventEmitter.prototype)
 
-
-function template(state, mkctx, tpl) {
-  if (! (this instanceof template))
-    return new template(state, mkctx, tpl);
-
+function template(container, tpl, mkctx) {
   var refs = {}
-    , rerender
+    , render = _render.bind(this)
 
-  var watched = owatch(extend(true, {}, state), null, {
+  tpl = Hogan.compile(tpl)
+
+  var refcatcher = owatch(extend(true, {}, this), null, {
     get: function(obj, prop, val) {
       refs[prop] = true
     }
   })
 
   // This will flag all getters called on state
-  _render(mkctx, tpl, watched)
+  _render.call(refcatcher, container, tpl, mkctx)
 
-  state.on('change', function(prop, newVal) {
-    if (refs.hasOwnProperty(prop)) {
-      _render(mkctx, tpl, state);
-    }
-  }.bind(this))
+  this.on('change', function(prop, newVal) {
+    if (refs.hasOwnProperty(prop))
+      render(container, tpl, mkctx);
+  })
 }
 
-function _render(mkctx, tpl, state) {
-  $('#shiner').html(mkctx(state))
+function _render(container, tpl, mkctx) {
+  var html = tpl.render(mkctx.call(this))
+  if (container)
+    container.innerHTML = html;
+  return html
 }
 
 

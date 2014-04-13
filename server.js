@@ -3,7 +3,9 @@ var express = require('express')
 
 var app = express()
 
-app.use(enchilada(__dirname + '/js'))
+app.use(enchilada({
+   src: __dirname + '/js' 
+}))
 app.use(express.static(__dirname + '/static'))
 
 

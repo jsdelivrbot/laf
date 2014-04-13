@@ -9,9 +9,13 @@ var app = laf({
   }
 })
 
-var shinerTpl = laf.template(app, function(app) {
-  return "toes: " + app.toes
-}, {render:function(){}})
+var tpl = $('#tpl-shiner').html().trim()
+
+var shinerTpl = app.template($('#shiner')[0], tpl,
+  function() {
+    return {his_feet: 'has ' + this.toes}
+  }
+)
 
 window.shiner = app
 
