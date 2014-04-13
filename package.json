@@ -18,6 +18,7 @@
   "dependencies": {
     "express": "~4.0.0",
     "enchilada": "~0.8.0",
-    "traverse": "~0.6.6"
+    "traverse": "~0.6.6",
+    "extend": "~1.2.1"
   }
 }

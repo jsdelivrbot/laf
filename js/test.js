@@ -1,6 +1,6 @@
 var laf = require('./laf')
 
-var shiner = laf({
+var app = laf({
    breath: 'stinky'
   ,toes: 'hairy'
   ,health: {
@@ -9,5 +9,9 @@ var shiner = laf({
   }
 })
 
-window.shiner = shiner
+var shinerTpl = laf.template(app, function(app) {
+  return "toes: " + app.toes
+}, {render:function(){}})
+
+window.shiner = app
 

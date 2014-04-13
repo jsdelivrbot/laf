@@ -1,6 +1,8 @@
+var DEFAULT_CLONE_DEPTH = 20
+
 function owatch(object, property, handlers, depth) {
   // Initialize
-  var t = this, o = object;
+  var o = object;
   var allProperties = property ? [property] : Object.keys(o);
 
   // Depth detection
@@ -61,6 +63,9 @@ function owatch(object, property, handlers, depth) {
         },
 
         set : function(newValue) {
+
+          if (! handlers.set)
+            return;
 
           // Return early if no change
           var origValue = o.__propertyValues[prop][0];
@@ -134,7 +139,6 @@ function makeHidden(object, property, value) {
 function _equalsDeep(object1, object2, depth) {
 
   // Recursion detection
-  var t = this;
   depth = (depth === null ? DEFAULT_CLONE_DEPTH : depth);
   if (depth < 0) {
     return {};
@@ -182,4 +186,6 @@ function noop(){}
 
 
 module.exports = owatch
+module.exports._makeHidden = makeHidden
+module.exports._equalsDeep = _equalsDeep
 
