@@ -25,6 +25,7 @@ function state(obj) {
 function template(container, tpl, mkctx) {
   var refs = {}
     , render = _render.bind(this)
+    , timer
 
   tpl = Hogan.compile(tpl)
 
@@ -38,8 +39,15 @@ function template(container, tpl, mkctx) {
   _render.call(refcatcher, container, tpl, mkctx)
 
   this.on('change', function(prop, newVal) {
-    if (refs.hasOwnProperty(prop))
-      render(container, tpl, mkctx);
+    if (timer)
+      return;
+
+    if (refs.hasOwnProperty(prop)) {
+      timer = requestAnimationFrame(function() {
+        render(container, tpl, mkctx)
+        timer = null
+      })
+    }
   })
 }
 
@@ -53,5 +61,4 @@ function _render(container, tpl, mkctx) {
 
 
 module.exports.state = module.exports = state
-module.exports.template = template
 
