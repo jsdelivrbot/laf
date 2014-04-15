@@ -11,7 +11,7 @@ var app = laf({
 
 var tpl = $('#tpl-shiner').html().trim()
 
-var shinerTpl = app.template($('#shiner'), tpl,
+var shinerTpl = app.addTemplate($('#shiner'), tpl,
   function() {
     return {his_feet: 'has ' + this.toes}
   }

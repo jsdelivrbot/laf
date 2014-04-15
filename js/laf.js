@@ -16,7 +16,7 @@ function state(obj) {
   // 3 reserved key names: on, emit, template
   owatch._makeHidden(watched, 'on', EventEmitter.prototype.on.bind(watched))
   owatch._makeHidden(watched, 'emit', EventEmitter.prototype.emit.bind(watched))
-  owatch._makeHidden(watched, 'template', template.bind(watched))
+  owatch._makeHidden(watched, 'addTemplate', template.bind(watched))
 
   return watched
 }
@@ -39,7 +39,7 @@ function template(container, tpl, mkctx) {
   })
 
   // This will flag all getters called on state
-  _render.call(refcatcher, container, tpl, mkctx)
+  _render(refcatcher, container, tpl, mkctx)
 
   this.on('change', function(prop, newVal) {
     if (timer)
@@ -47,15 +47,16 @@ function template(container, tpl, mkctx) {
 
     if (refs.hasOwnProperty(prop)) {
       timer = requestAnimationFrame(function() {
-        render(container, tpl, mkctx)
+        // TODO: should probably disable setters altogether here
+        _render(extend(true, {}, this), container, tpl, mkctx)
         timer = null
-      })
+      }.bind(this))
     }
-  })
+  }.bind(this))
 }
 
-function _render(container, tpl, mkctx) {
-  var html = tpl.render(mkctx.call(this))
+function _render(state, container, tpl, mkctx) {
+  var html = tpl.render(mkctx.call(state))
   if (container)
     container.innerHTML = html;
   return html
