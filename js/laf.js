@@ -24,12 +24,12 @@ function state(obj) {
 
 function template(container, tpl, mkctx) {
   var refs = {}
-    , render = _render.bind(this)
     , timer
 
   if (jQuery && jQuery.fn && jQuery.fn.jquery && (container instanceof jQuery))
     container = container[0];
 
+  mkctx = mkctx || __identity
   tpl = Hogan.compile(tpl)
 
   var refcatcher = owatch(extend(true, {}, this), null, {
@@ -61,6 +61,9 @@ function _render(state, container, tpl, mkctx) {
     container.innerHTML = html;
   return html
 }
+
+
+function __identity(x) { return x }
 
 
 
