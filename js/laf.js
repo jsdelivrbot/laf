@@ -61,7 +61,7 @@ function template(container, tpl, mkctx) {
 }
 
 function _render(state, container, tpl, mkctx) {
-  var html = tpl.render(mkctx.call(state))
+  var html = tpl.render(mkctx(state))
 
   if (container) {
     var oldDOM = document.createElement('div')
@@ -78,6 +78,10 @@ function _render(state, container, tpl, mkctx) {
 
 
 function __identity(x) { return x }
+
+function __clone() {
+  return extend(true, {}, this)
+}
 
 
 

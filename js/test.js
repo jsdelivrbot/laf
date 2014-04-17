@@ -8,10 +8,10 @@ var app = laf({
 var tpl = $('#tpl-shiner').html().trim()
 
 var shinerTpl = app.addTemplate($('#shiner'), tpl,
-  function() {
+  function(state) {
     return {
-       shiner_has: this.shiner_has
-      ,cls: this.cls
+       shiner_has: state.shiner_has
+      ,cls: state.cls
     }
   }
 )
