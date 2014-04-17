@@ -13,9 +13,9 @@ window.extend = extend
 function state(obj) {
   obj || (obj = {})
 
-  var watched = owatch(obj, null, {set: function(obj, prop, oldVal, newVal) {
-    console.log("SET", prop, 'from', oldVal, '-->', newVal)
-    watched.emit('change', prop, newVal, oldVal)
+  var watched = owatch(obj, null, {set: function(obj, path, oldVal, newVal) {
+    console.log("SET", path, 'from', oldVal, '-->', newVal)
+    watched.emit('change', path, newVal, oldVal)
   }.bind(this)})
 
   // 3 reserved key names: on, emit, template
@@ -29,31 +29,36 @@ function state(obj) {
 
 function template(container, tpl, mkctx) {
   var refs = {}
+    , parentDiv = document.createElement('div')
     , timer
 
   if (jQuery && jQuery.fn && jQuery.fn.jquery && (container instanceof jQuery))
     container = container[0];
 
+  container.appendChild(parentDiv)
+
   mkctx = mkctx || __identity
   tpl = Hogan.compile(tpl)
 
   var refcatcher = owatch(extend(true, {}, this), null, {
-    get: function(obj, prop, val) {
-      refs[prop] = true
+    get: function(obj, path, val) {
+      refs[path] = true
     }
   })
 
-  // This will flag all getters called on state
-  _render(refcatcher, container, tpl, mkctx)
+  // Initial render will flag all getters called on state
+  _render(refcatcher, parentDiv, tpl, mkctx)
 
-  this.on('change', function(prop, newVal) {
+  this.on('change', function(path, newVal) {
     if (timer)
       return;
 
-    if (refs.hasOwnProperty(prop)) {
+    // Don't re-render if none of our ref's have changed
+    if (refs.hasOwnProperty(path)) {
+      // TODO: use a shim for this
       timer = requestAnimationFrame(function() {
         // TODO: should probably disable setters altogether here
-        _render(extend(true, {}, this), container, tpl, mkctx)
+        _render(extend(true, {}, this), parentDiv, tpl, mkctx)
         timer = null
       }.bind(this))
     }

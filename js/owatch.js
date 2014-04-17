@@ -1,15 +1,14 @@
 var DEFAULT_CLONE_DEPTH = 20
 
-function owatch(object, property, handlers, depth) {
+function owatch(object, property, handlers, path) {
   // Initialize
   var o = object;
   var allProperties = property ? [property] : Object.keys(o);
 
   // Depth detection
-  depth = (depth === null ? DEFAULT_CLONE_DEPTH : depth);
-  if (depth < 0) {
+  path = path || []
+  if (path.length > DEFAULT_CLONE_DEPTH)
     return;
-  }
 
   handlers.get || (handlers.get = noop)
   handlers.set || (handlers.set = noop)
@@ -22,7 +21,6 @@ function owatch(object, property, handlers, depth) {
 
   // Attach watchers to all requested properties
   allProperties.forEach(function(prop){
-
     // Setup the property for watching (first time only)
     if (typeof(o.__propertyValues[prop]) == 'undefined') {
 
@@ -30,6 +28,9 @@ function owatch(object, property, handlers, depth) {
       var descriptor = Object.getOwnPropertyDescriptor(o, prop);
       if (descriptor && descriptor.writable === false)
         return;
+
+      var propPath = path.concat(prop)
+        , propPathStr = propPath.join('.')
 
       // Copy the value to the hidden field, and add the property to watchers
       o.__propertyValues[prop] = [o[prop]];
@@ -39,7 +40,7 @@ function owatch(object, property, handlers, depth) {
       Object.defineProperty(o, prop, {
         enumerable : true,
 
-        get : function(){
+        get : function(pathstr){ return function() {
           // If more than 1 item is in the values array,
           // then we're currently processing watchers.
           if (o.__propertyValues[prop].length == 1) {
@@ -48,7 +49,7 @@ function owatch(object, property, handlers, depth) {
 
             o.__watchers[prop].forEach(function(watcher) {
               try {
-                watcher.get(o, prop, val)
+                watcher.get(o, pathstr, val)
               } catch (e) {
                 console.error("Exception in object get watcher.get for " + prop, e)
               }
@@ -60,10 +61,9 @@ function owatch(object, property, handlers, depth) {
             // [0] is prior value, [1] is new value being processed
             return o.__propertyValues[prop][1];
           }
-        },
+        }}(propPathStr),
 
-        set : function(newValue) {
-
+        set : function(pathstr){ return function(newValue) {
           if (! handlers.set)
             return;
 
@@ -96,7 +96,7 @@ function owatch(object, property, handlers, depth) {
 
             o.__watchers[prop].forEach(function(watcher) {
               try {
-                watcher.set(o, prop, oldValue, newValue);
+                watcher.set(o, pathstr, oldValue, newValue);
               } catch (e) {
                 // Log an error and continue with subsequent watchers
                 console.error("Exception in object watcher.set for " + prop, e);
@@ -106,14 +106,14 @@ function owatch(object, property, handlers, depth) {
             // Done processing this value
             o.__propertyValues[prop].splice(0,1);
           }
-        }
+        }}(propPathStr)
       });
 
     } // Done setting up the property for watching (first time)
 
     // Recurs if this is an object...
     if (o[prop] && typeof(o[prop]) == 'object') {
-      owatch(o[prop], null, handlers, depth - 1);
+      owatch(o[prop], null, handlers, propPath);
     }
 
     // Add the watcher to the property
