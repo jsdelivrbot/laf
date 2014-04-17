@@ -1,19 +1,18 @@
 var laf = require('./laf')
 
 var app = laf({
-   breath: 'stinky'
-  ,toes: 'hairy'
-  ,health: {
-     lazy: 'moderate'
-    ,awesome: true
-  }
+   shiner_has: 'bad breath'
+  ,cls: 'here'
 })
 
 var tpl = $('#tpl-shiner').html().trim()
 
 var shinerTpl = app.addTemplate($('#shiner'), tpl,
   function() {
-    return {his_feet: 'has ' + this.toes}
+    return {
+       shiner_has: this.shiner_has
+      ,cls: this.cls
+    }
   }
 )
 

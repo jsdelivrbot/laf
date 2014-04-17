@@ -2,10 +2,22 @@
 <html>
     <head>
         <title>test</title>
+
+        <style>
+            .here, .there { position: absolute; }
+            .here { top: 20px; left: 20px; }
+            .there {
+                top: 100px;
+                left: 400px;
+                -webkit-transition: top 1s, left 1s;
+            }
+        </style>
     </head>
     <body>
         <script id="tpl-shiner" type="text/mustache">
-            his feet: {{his_feet}}
+            <div class="{{cls}}">
+                shiner has: {{shiner_has}}
+            </div>
         </script>
 
         <div id="shiner" style="font-size:3em"></div>
