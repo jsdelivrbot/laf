@@ -2,7 +2,12 @@ var owatch = require('./owatch')
   , extend = require('extend')
   , EventEmitter = require('events').EventEmitter
   , Hogan = require('hogan.js')
+  , diffDOM = require('diffDOM')
 
+var differ = new diffDOM()
+
+
+// TODO: why do we do this?
 window.extend = extend
 
 function state(obj) {
@@ -57,8 +62,17 @@ function template(container, tpl, mkctx) {
 
 function _render(state, container, tpl, mkctx) {
   var html = tpl.render(mkctx.call(state))
-  if (container)
-    container.innerHTML = html;
+
+  if (container) {
+    var oldDOM = document.createElement('div')
+    var newDOM = document.createElement('div')
+    oldDOM.innerHTML = container.innerHTML
+    newDOM.innerHTML = html
+
+    var diff = differ.diff(oldDOM, newDOM)
+    differ.apply(container, diff)
+  }
+
   return html
 }
 

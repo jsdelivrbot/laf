@@ -20,6 +20,7 @@
     "enchilada": "~0.8.0",
     "traverse": "~0.6.6",
     "extend": "~1.2.1",
-    "hogan.js": "~2.0.0"
+    "hogan.js": "~2.0.0",
+    "diffDOM": "git://github.com/runningskull/diffDOM.git#browserify"
   }
 }
