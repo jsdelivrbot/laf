@@ -1,128 +1,91 @@
-var DEFAULT_CLONE_DEPTH = 20
+var EventEmitter = require('events').EventEmitter
+  , extend = require('extend')
 
-function owatch(object, property, handlers, path) {
-  // Initialize
-  var o = object;
-  var allProperties = property ? [property] : Object.keys(o);
+var MAX_DEPTH = 32
 
-  // Depth detection
-  path = path || []
-  if (path.length > DEFAULT_CLONE_DEPTH)
-    return;
 
+function owatch(obj, handlers, depth) {
+  depth || (depth = 0)
   handlers.get || (handlers.get = noop)
   handlers.set || (handlers.set = noop)
+  handlers.init || (handlers.init = noop)
+  obj.__values || makeHidden(obj, '__values', {})
 
-  // Create hidden properties on the object
-  if (!o.__watchers)
-    makeHidden(o, '__watchers', {});
-  if (!o.__propertyValues)
-    makeHidden(o, '__propertyValues', {});
+  // No infinite recursion
+  if (depth > MAX_DEPTH)
+    return;
 
-  // Attach watchers to all requested properties
-  allProperties.forEach(function(prop){
-    // Setup the property for watching (first time only)
-    if (typeof(o.__propertyValues[prop]) == 'undefined') {
+  handlers.init(obj)
 
-      // Don't error re-defining the property if immutable
-      var descriptor = Object.getOwnPropertyDescriptor(o, prop);
-      if (descriptor && descriptor.writable === false)
-        return;
+  Object.keys(obj).forEach(function(key) {
+    // Short-circuit if we've already taken over this property
+    if (typeof(obj.__values[key]) != 'undefined')
+      return;
 
-      var propPath = path.concat(prop)
-        , propPathStr = propPath.join('.')
+    // Edge-case: don't error if property is immutable
+    var descriptor = Object.getOwnPropertyDescriptor(obj, key)
+    if (descriptor && descriptor.writable === false)
+      return;
 
-      // Copy the value to the hidden field, and add the property to watchers
-      o.__propertyValues[prop] = [o[prop]];
-      o.__watchers[prop] = [];
+    // Store the actual value for retrieval
+    obj.__values[key] = obj[key]
 
-      // Attach the property watcher
-      Object.defineProperty(o, prop, {
-        enumerable : true,
+    // Replace this value w/ getter/setter
+    listen(obj, key, handlers)
 
-        get : function(pathstr){ return function() {
-          // If more than 1 item is in the values array,
-          // then we're currently processing watchers.
-          if (o.__propertyValues[prop].length == 1) {
-            // Current value
-            var val = o.__propertyValues[prop][0];
+    // Descend into objects
+    if (typeof(obj.__values[key]) == 'object') {
+      var myParent = handlers.set.__parent||noop
 
-            o.__watchers[prop].forEach(function(watcher) {
-              try {
-                watcher.get(o, pathstr, val)
-              } catch (e) {
-                console.error("Exception in object get watcher.get for " + prop, e)
-              }
-            })
+      handlers.set.__parent = function(obj, path, newValue, oldValue) {
+        var _path = [key, path].join('.')
+        handlers.set(obj, _path, newValue, oldValue)
+        myParent(obj, _path, newValue, oldValue)
+      }
 
-            return val
+      owatch(obj.__values[key], handlers, depth+1)
+    }
+  })
 
-          } else {
-            // [0] is prior value, [1] is new value being processed
-            return o.__propertyValues[prop][1];
-          }
-        }}(propPathStr),
+  return obj
+}
 
-        set : function(pathstr){ return function(newValue) {
-          if (! handlers.set)
-            return;
 
-          // Return early if no change
-          var origValue = o.__propertyValues[prop][0];
-          if (_equalsDeep(origValue, newValue))
-            return;
+function listen(obj, key, handlers) {
+  Object.defineProperty(obj, key, {
+    enumerable: true
 
-          // Remember the new value, and return if we're in another setter
-          o.__propertyValues[prop].push(newValue);
-          if (o.__propertyValues[prop].length > 2)
-            return;
+    ,get: function() {
+      var val = obj.__values[key]
 
-          // Call all watchers for each change requested
-          var numIterations = 0;
-          while (o.__propertyValues[prop].length > 1) {
+      try { handlers.get(obj, key, val) }
+      catch (ex) { console.error('Exception in GET handler for ' + key, ex)}
 
-            // Detect recursion
-            if (++numIterations > 20) {
-              o.__propertyValues[prop] = [origValue];
-              throw new Error('Recursion detected while setting [' + prop + ']');
-            }
-
-            // Call each watcher for the current values
-            var oldValue = o.__propertyValues[prop][0];
-            newValue = o.__propertyValues[prop][1];
-
-            if (typeof(newValue) == 'object')
-              newValue = owatch(newValue, null, handlers);
-
-            o.__watchers[prop].forEach(function(watcher) {
-              try {
-                watcher.set(o, pathstr, oldValue, newValue);
-              } catch (e) {
-                // Log an error and continue with subsequent watchers
-                console.error("Exception in object watcher.set for " + prop, e);
-              }
-            });
-
-            // Done processing this value
-            o.__propertyValues[prop].splice(0,1);
-          }
-        }}(propPathStr)
-      });
-
-    } // Done setting up the property for watching (first time)
-
-    // Recurs if this is an object...
-    if (o[prop] && typeof(o[prop]) == 'object') {
-      owatch(o[prop], null, handlers, propPath);
+      return val
     }
 
-    // Add the watcher to the property
-    o.__watchers[prop].push(handlers);
+    ,set: function(newValue) {
+      var oldValue = obj.__values[key]
 
-  }); // Done processing each property
+      // Short-curcuit if no change
+      if (deepEquals(oldValue, newValue))
+        return;
 
-  // Return the original object - for chaining
-  return o;
+      if (typeof(newValue) == 'object')
+        newValue = owatch(newValue, handlers)
+
+      obj.__values[key] = newValue
+
+      try {
+        if (window.DEBUG)
+          debugger;
+        handlers.set(obj, key, newValue, oldValue)
+        handlers.set.__parent &&
+          handlers.set.__parent(obj, key, newValue, oldValue)
+      }
+      catch (ex) { console.error('Exception in SET handler for ' + key, ex)}
+    }
+  })
 }
 
 
@@ -139,9 +102,7 @@ function makeHidden(object, property, value) {
   return object;
 }
 
-
-function _equalsDeep(object1, object2, depth) {
-
+function deepEquals(object1, object2, depth) {
   // Recursion detection
   depth = (depth === null ? DEFAULT_CLONE_DEPTH : depth);
   if (depth < 0) {
@@ -171,7 +132,7 @@ function _equalsDeep(object1, object2, depth) {
 
     // Call recursively if an object or array
     if (object1[prop] && typeof(object1[prop]) === 'object') {
-      if (!_equalsDeep(object1[prop], object2[prop], depth - 1)) {
+      if (!deepEquals(object1[prop], object2[prop], depth - 1)) {
         return false;
       }
     }
@@ -186,10 +147,13 @@ function _equalsDeep(object1, object2, depth) {
   return true;
 };
 
+
 function noop(){}
+
 
 
 module.exports = owatch
 module.exports._makeHidden = makeHidden
-module.exports._equalsDeep = _equalsDeep
+module.exports._deepEquals = deepEquals
+
 

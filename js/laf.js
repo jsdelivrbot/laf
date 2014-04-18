@@ -7,29 +7,30 @@ var owatch = require('./owatch')
 var differ = new diffDOM()
 
 
-// TODO: why do we do this?
-window.extend = extend
-
 function state(obj) {
   obj || (obj = {})
 
-  var watched = owatch(obj, null, {set: function(obj, path, oldVal, newVal) {
-    console.log("SET", path, 'from', oldVal, '-->', newVal)
-    watched.emit('change', path, newVal, oldVal)
-  }.bind(this)})
+  var watched = owatch(obj, {
+     init: __initWatched
 
-  // 3 reserved key names: on, emit, template
-  owatch._makeHidden(watched, 'on', EventEmitter.prototype.on.bind(watched))
-  owatch._makeHidden(watched, 'emit', EventEmitter.prototype.emit.bind(watched))
-  owatch._makeHidden(watched, 'addTemplate', template.bind(watched))
+    ,get: function(obj, path, val) {
+      console.log("GET", path, '=', val)
+    }
+
+    ,set: function(obj, path, oldVal, newVal) {
+      console.log("SET", path, 'from', oldVal, '-->', newVal)
+      obj.emit('change', path, newVal, oldVal)
+    }
+  })
 
   return watched
 }
 
 
-function template(container, tpl, mkctx) {
+function addTemplate(container, tpl, mkctx) {
   var refs = {}
     , parentDiv = document.createElement('div')
+    , self = this
     , timer
 
   if (jQuery && jQuery.fn && jQuery.fn.jquery && (container instanceof jQuery))
@@ -40,29 +41,26 @@ function template(container, tpl, mkctx) {
   mkctx = mkctx || __identity
   tpl = Hogan.compile(tpl)
 
-  var refcatcher = owatch(extend(true, {}, this), null, {
+  var refcatcher = owatch(extend(true, {}, this), {
     get: function(obj, path, val) {
       refs[path] = true
     }
   })
 
+  this.on('change', function(path, newVal) {
+    if (refs[path]) {
+      timer = timer || requestAnimationFrame(function() {
+        // TODO: should probably disable setters altogether here?
+        _render(extend(true, {}, self), parentDiv, tpl, mkctx)
+        timer = null
+      })
+    }
+  }.bind())
+
   // Initial render will flag all getters called on state
   _render(refcatcher, parentDiv, tpl, mkctx)
 
-  this.on('change', function(path, newVal) {
-    if (timer)
-      return;
-
-    // Don't re-render if none of our ref's have changed
-    if (refs.hasOwnProperty(path)) {
-      // TODO: use a shim for this
-      timer = requestAnimationFrame(function() {
-        // TODO: should probably disable setters altogether here
-        _render(extend(true, {}, this), parentDiv, tpl, mkctx)
-        timer = null
-      }.bind(this))
-    }
-  }.bind(this))
+  return this
 }
 
 function _render(state, container, tpl, mkctx) {
@@ -86,6 +84,13 @@ function __identity(x) { return x }
 
 function __clone() {
   return extend(true, {}, this)
+}
+
+function __initWatched(obj) {
+  // 3 reserved key names: on, emit, addTemplate
+  obj.on || owatch._makeHidden(obj, 'on', EventEmitter.prototype.on.bind(obj))
+  obj.emit || owatch._makeHidden(obj, 'emit', EventEmitter.prototype.emit.bind(obj))
+  obj.addTemplate || owatch._makeHidden(obj, 'addTemplate', addTemplate.bind(obj))
 }
 
 

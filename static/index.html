@@ -4,19 +4,22 @@
         <title>test</title>
 
         <style>
-            .here, .there { position: absolute; }
-            .here { top: 20px; left: 20px; }
-            .there {
-                top: 100px;
-                left: 400px;
-                -webkit-transition: top 1s, left 1s;
+            .sleeping {
+                opacity: 0.25;
+                -webkit-transition: opacity 1s ease-in-out;
+            }
+
+            .begging {
+                opacity: 1;
+                -webkit-transition: opacity 1s ease-in-out;
             }
         </style>
     </head>
     <body>
         <script id="tpl-shiner" type="text/mustache">
-            <div class="{{cls}}">
-                shiner has: {{shiner_has}}
+            <div class="{{current_activity}}">
+                shiner has {{breath_quality}} breath<br/><br/>
+                let's test nested: {{nested_child.nested_nested_child.b}}
             </div>
         </script>
 
