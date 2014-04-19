@@ -1,6 +1,5 @@
 var owatch = require('./owatch')
   , extend = require('extend')
-  , EventEmitter = require('events').EventEmitter
   , Hogan = require('hogan.js')
   , diffDOM = require('diffDOM')
 
@@ -22,7 +21,7 @@ function state(obj) {
 }
 
 
-function addTemplate(container, tpl, mkctx) {
+function addTemplate(container, tpl, mkctx, partials) {
   var refs = {}
     , parentDiv = document.createElement('div')
     , self = this
@@ -51,19 +50,19 @@ function addTemplate(container, tpl, mkctx) {
 
     timer = timer || requestAnimationFrame(function() {
       // TODO: should probably disable setters altogether here?
-      _render(extend(true, {}, self), parentDiv, tpl, mkctx)
+      _render(extend(true, {}, self), parentDiv, tpl, mkctx, partials)
       timer = null
     })
   })
 
   // Initial render will flag all getters called on state
-  _render(refcatcher, parentDiv, tpl, mkctx)
+  _render(refcatcher, parentDiv, tpl, mkctx, partials)
 
   return this
 }
 
-function _render(state, container, tpl, mkctx) {
-  var html = tpl.render(mkctx(state))
+function _render(state, container, tpl, mkctx, partials) {
+  var html = tpl.render(mkctx(state), {partials: partials})
 
   if (container) {
     var oldDOM = document.createElement('div')
@@ -87,9 +86,30 @@ function __clone() {
 
 function __initWatched(obj) {
   // 3 reserved key names: on, emit, addTemplate
-  obj.on || owatch._makeHidden(obj, 'on', EventEmitter.prototype.on.bind(obj))
-  obj.emit || owatch._makeHidden(obj, 'emit', EventEmitter.prototype.emit.bind(obj))
+  obj.on || owatch._makeHidden(obj, 'on', _on.bind(obj))
+  obj.emit || owatch._makeHidden(obj, 'emit', _emit.bind(obj))
   obj.addTemplate || owatch._makeHidden(obj, 'addTemplate', addTemplate.bind(obj))
+}
+
+
+function _on(evt, listener) {
+  this.__listeners || owatch._makeHidden(this, '__listeners', {})
+  this.__listeners[evt] || (this.__listeners[evt] = [])
+  this.__listeners[evt].push(listener)
+  return this
+}
+
+function _off(evt, listener) {
+  // TODO
+}
+
+function _emit(evt) {
+  var args = Array.prototype.slice.call(arguments, 1)
+    , listeners = (this.__listeners||{})[evt] || []
+
+  for (var i=0, len=listeners.length; i<len; i++) {
+    listeners[i].apply(null, args)
+  }
 }
 
 
