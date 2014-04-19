@@ -13,13 +13,8 @@ function state(obj) {
   var watched = owatch(obj, {
      init: __initWatched
 
-    ,get: function(obj, path, val) {
-      console.log("GET", path, '=', val)
-    }
-
-    ,set: function(obj, path, oldVal, newVal) {
-      console.log("SET", path, 'from', oldVal, '-->', newVal)
-      obj.emit('change', path, newVal, oldVal)
+    ,set: function(obj, path, newVal, oldVal) {
+      obj.emit('change', obj, path, newVal, oldVal)
     }
   })
 
@@ -41,21 +36,25 @@ function addTemplate(container, tpl, mkctx) {
   mkctx = mkctx || __identity
   tpl = Hogan.compile(tpl)
 
-  var refcatcher = owatch(extend(true, {}, this), {
+  var _refcatch = extend(true, {__is_refcatch:true}, this)
+
+  var refcatcher = owatch(_refcatch, {
     get: function(obj, path, val) {
-      refs[path] = true
+      if (obj == _refcatch)
+        refs[path] = true;
     }
   })
 
-  this.on('change', function(path, newVal) {
-    if (refs[path]) {
-      timer = timer || requestAnimationFrame(function() {
-        // TODO: should probably disable setters altogether here?
-        _render(extend(true, {}, self), parentDiv, tpl, mkctx)
-        timer = null
-      })
-    }
-  }.bind())
+  this.on('change', function(obj, path, newVal) {
+    if ((obj != self) || (! refs[path]))
+      return;
+
+    timer = timer || requestAnimationFrame(function() {
+      // TODO: should probably disable setters altogether here?
+      _render(extend(true, {}, self), parentDiv, tpl, mkctx)
+      timer = null
+    })
+  })
 
   // Initial render will flag all getters called on state
   _render(refcatcher, parentDiv, tpl, mkctx)

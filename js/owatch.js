@@ -4,15 +4,21 @@ var EventEmitter = require('events').EventEmitter
 var MAX_DEPTH = 32
 
 
-function owatch(obj, handlers, depth) {
-  depth || (depth = 0)
+function owatch(obj, handlers, parentHandlers, path) {
+  path || (path = [])
   handlers.get || (handlers.get = noop)
   handlers.set || (handlers.set = noop)
   handlers.init || (handlers.init = noop)
+  parentHandlers = extend({}, {get:noop, set:noop}, parentHandlers)
+
   obj.__values || makeHidden(obj, '__values', {})
 
+  // TODO: path will have preceding dot
+  obj.__fullPath || makeHidden(obj, '__fullPath', path)
+  obj.__fullPathStr || makeHidden(obj, '__fullPathStr', path.join('.'))
+
   // No infinite recursion
-  if (depth > MAX_DEPTH)
+  if (path.length > MAX_DEPTH)
     return;
 
   handlers.init(obj)
@@ -31,19 +37,31 @@ function owatch(obj, handlers, depth) {
     obj.__values[key] = obj[key]
 
     // Replace this value w/ getter/setter
-    listen(obj, key, handlers)
+    listen(obj, key, handlers, parentHandlers)
 
     // Descend into objects
     if (typeof(obj.__values[key]) == 'object') {
-      var myParent = handlers.set.__parent||noop
+      var childParentHandlers = {
+        get: function(__, childFullPathStr, value) {
+          var _path = obj.__fullPathStr
+            ? childFullPathStr.replace(obj.__fullPathStr+'.', '')
+            : childFullPathStr
 
-      handlers.set.__parent = function(obj, path, newValue, oldValue) {
-        var _path = [key, path].join('.')
-        handlers.set(obj, _path, newValue, oldValue)
-        myParent(obj, _path, newValue, oldValue)
+          handlers.get(obj, _path, value)
+          parentHandlers.get(obj, childFullPathStr, value)
+        }
+
+        ,set: function(__, childFullPathStr, newValue, oldValue) {
+          var _path = obj.__fullPathStr
+            ? childFullPathStr.replace(obj.__fullPathStr+'.', '')
+            : childFullPathStr
+
+          handlers.set(obj, _path, newValue, oldValue)
+          parentHandlers.set(obj, childFullPathStr, newValue, oldValue)
+        }
       }
 
-      owatch(obj.__values[key], handlers, depth+1)
+      owatch(obj.__values[key], handlers, childParentHandlers, path.concat(key))
     }
   })
 
@@ -51,14 +69,17 @@ function owatch(obj, handlers, depth) {
 }
 
 
-function listen(obj, key, handlers) {
+function listen(obj, key, handlers, parentHandlers) {
   Object.defineProperty(obj, key, {
     enumerable: true
 
     ,get: function() {
       var val = obj.__values[key]
 
-      try { handlers.get(obj, key, val) }
+      try {
+        handlers.get(obj, key, val)
+        parentHandlers.get(obj, [obj.__fullPathStr, key].join('.'), val)
+      }
       catch (ex) { console.error('Exception in GET handler for ' + key, ex)}
 
       return val
@@ -72,16 +93,13 @@ function listen(obj, key, handlers) {
         return;
 
       if (typeof(newValue) == 'object')
-        newValue = owatch(newValue, handlers)
+        newValue = owatch(newValue, handlers, obj.__fullPath.concat(key))
 
       obj.__values[key] = newValue
 
       try {
-        if (window.DEBUG)
-          debugger;
         handlers.set(obj, key, newValue, oldValue)
-        handlers.set.__parent &&
-          handlers.set.__parent(obj, key, newValue, oldValue)
+        parentHandlers.set(obj, obj.__fullPathStr, newValue, oldValue)
       }
       catch (ex) { console.error('Exception in SET handler for ' + key, ex)}
     }
