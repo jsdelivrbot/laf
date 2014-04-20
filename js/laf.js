@@ -17,7 +17,7 @@ function state(obj) {
      init: __initWatched
 
     ,set: function(obj, path, newVal, oldVal) {
-      obj.__emit('change', obj, path, newVal, oldVal)
+      obj.___emit('change', obj, path, newVal, oldVal)
     }
   })
 
@@ -48,7 +48,7 @@ function addTemplate(container, tpl, mkctx, partials) {
     }
   })
 
-  this.__on('change', function(obj, path, newVal) {
+  this.___on('change', function(obj, path, newVal) {
     if ((obj != self) || (! refs[path]))
       return;
 

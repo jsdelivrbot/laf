@@ -12,8 +12,6 @@ function owatch(obj, handlers, parentHandlers, path) {
   handlers.init || (handlers.init = noop)
   parentHandlers = extend({}, {get:noop, set:noop}, parentHandlers)
 
-  var alreadyWatched = !!obj.__values
-
   if (obj.__values === undefined) {
     makeHidden(obj, '__values', {})
     makeHidden(obj, '__fullPath', path)
