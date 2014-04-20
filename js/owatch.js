@@ -6,22 +6,24 @@ var MAX_DEPTH = 32
 
 function owatch(obj, handlers, parentHandlers, path) {
   path || (path = [])
+  handlers || (handlers = {})
   handlers.get || (handlers.get = noop)
   handlers.set || (handlers.set = noop)
   handlers.init || (handlers.init = noop)
   parentHandlers = extend({}, {get:noop, set:noop}, parentHandlers)
 
-  obj.__values || makeHidden(obj, '__values', {})
+  var alreadyWatched = !!obj.__values
 
-  // TODO: path will have preceding dot
-  obj.__fullPath || makeHidden(obj, '__fullPath', path)
-  obj.__fullPathStr || makeHidden(obj, '__fullPathStr', path.join('.'))
+  if (obj.__values === undefined) {
+    makeHidden(obj, '__values', {})
+    makeHidden(obj, '__fullPath', path)
+    makeHidden(obj, '__fullPathStr', path.join('.'))
+    handlers.init(obj)
+  }
 
   // No infinite recursion
   if (path.length > MAX_DEPTH)
     return;
-
-  handlers.init(obj)
 
   Object.keys(obj).forEach(function(key) {
     // Short-circuit if we've already taken over this property
