@@ -102,9 +102,6 @@ function __initWatched(obj) {
 
   // If user is using reserved name, don't clobber it
   obj.on || owatch._makeHidden(obj, 'on', on)
-  obj.emit || owatch._makeHidden(obj, 'emit', emit)
-  obj.get || owatch._makeHidden(obj, 'get', get)
-  obj.set || owatch._makeHidden(obj, 'set', set)
   obj.addTemplate || owatch._makeHidden(obj, 'addTemplate', atpl)
 
   // Fallbacks if user is using reserved name
