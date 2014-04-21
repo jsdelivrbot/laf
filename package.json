@@ -16,11 +16,14 @@
     "url": "https://github.com/runningskull/laf/issues"
   },
   "dependencies": {
-    "express": "~4.0.0",
-    "enchilada": "~0.8.0",
-    "traverse": "~0.6.6",
-    "extend": "~1.2.1",
-    "hogan.js": "~2.0.0",
-    "diffDOM": "git://github.com/runningskull/diffDOM.git#browserify"
+    "express": "4.0.0",
+    "enchilada": "0.8.0",
+    "traverse": "0.6.6",
+    "extend": "1.2.1",
+    "hogan.js": "2.0.0",
+    "diffDOM": "git://github.com/fiduswriter/diffDOM.git#5b628f8e3e"
+  },
+  "devDependencies": {
+    "browserify": "~3.43.0"
   }
 }
