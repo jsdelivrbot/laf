@@ -76,6 +76,9 @@ function listen(obj, key, handlers, parentHandlers) {
     ,get: function() {
       var val = obj.__values[key]
 
+      if (typeof(val) == 'function')
+        val = val.call(obj);
+
       try {
         handlers.get(obj, key, val)
         parentHandlers.get(obj, [obj.__fullPathStr, key].join('.'), val)
