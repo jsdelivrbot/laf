@@ -76,6 +76,11 @@ function _render(state, container, tpl, mkctx, partials) {
 
     var diff = differ.diff(oldDOM, newDOM)
     differ.apply(container, diff)
+
+    if (diff.length) {
+      // TODO: how to make this catchable by jquery?
+      container.dispatchEvent(new Event('render'))
+    }
   }
 
   return html
