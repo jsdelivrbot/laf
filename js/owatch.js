@@ -16,7 +16,7 @@ function owatch(obj, handlers, parentHandlers, path) {
     makeHidden(obj, '___values', {})
     makeHidden(obj, '___fullPath', path)
     makeHidden(obj, '___fullPathStr', path.join('.'))
-    makeHidden(obj, '___extend', _extend.bind(this))
+    makeHidden(obj, '___update', _update.bind(this))
     handlers.init(obj)
   }
 
@@ -28,7 +28,8 @@ function owatch(obj, handlers, parentHandlers, path) {
 
   return obj
 
-  function _wrapKeys() {
+
+  function _wrapKeys(emitNewProps) {
     Object.keys(obj).forEach(function(key) {
       // Short-circuit if we've already taken over this property
       if (typeof(obj.___values[key]) != 'undefined')
@@ -43,10 +44,10 @@ function owatch(obj, handlers, parentHandlers, path) {
       obj.___values[key] = obj[key]
 
       // Replace this value w/ getter/setter
-      _listen(obj, key, handlers, parentHandlers)
+      _listen(obj, key, handlers, parentHandlers, emitNewProps)
 
       // Descend into objects
-      if (typeof(obj.___values[key]) == 'object') {
+      if (obj.___values[key] && (typeof(obj.___values[key]) == 'object')) {
         var childParentHandlers = {
           get: function(___, childFullPathStr, value) {
             var _path = obj.___fullPathStr
@@ -72,23 +73,20 @@ function owatch(obj, handlers, parentHandlers, path) {
     })
   }
 
-  function _extend(o) {
+  function _update(o) {
     obj = extend(obj, o)
-    _wrapKeys()
+    _wrapKeys(true)
     return obj
   }
 }
 
 
-function _listen(obj, key, handlers, parentHandlers) {
+function _listen(obj, key, handlers, parentHandlers, emitNow) {
   Object.defineProperty(obj, key, {
     enumerable: true
 
     ,get: function() {
       var val = obj.___values[key]
-
-      if (typeof(val) == 'function')
-        val = val.call(obj);
 
       try {
         handlers.get(obj, key, val)
@@ -102,22 +100,35 @@ function _listen(obj, key, handlers, parentHandlers) {
     ,set: function(newValue) {
       var oldValue = obj.___values[key]
 
-      // Short-curcuit if no change
-      if (deepEquals(oldValue, newValue))
-        return;
-
-      if (typeof(newValue) == 'object')
-        newValue = owatch(newValue, handlers, obj.___fullPath.concat(key))
-
-      obj.___values[key] = newValue
-
-      try {
-        handlers.set(obj, key, newValue, oldValue)
-        parentHandlers.set(obj, obj.___fullPathStr, newValue, oldValue)
-      }
-      catch (ex) { console.error('Exception in SET handler for ' + key, ex)}
+      _set(newValue, oldValue)
     }
   })
+
+  if (emitNow)
+    _set(obj.___values[key], undefined);
+
+
+  function _set(newValue, oldValue) {
+    var newv = newValue
+
+    if (newValue && typeof(newValue) == 'function')
+      newv = function() { return newValue.apply(obj, arguments) }
+
+    // Short-curcuit if no change
+    if (deepEquals(oldValue, newv))
+      return;
+
+    if (newValue && typeof(newValue) == 'object')
+      newv = owatch(newValue, handlers, obj.___fullPath.concat(key))
+
+    obj.___values[key] = newv
+
+    try {
+      handlers.set(obj, key, newv, oldValue)
+      parentHandlers.set(obj, obj.___fullPathStr, newv, oldValue)
+    }
+    catch (ex) { console.error('Exception in SET handler for ' + key, ex)}
+  }
 }
 
 

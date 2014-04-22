@@ -17,7 +17,7 @@ function state(obj) {
      init: __initWatched
 
     ,set: function(obj, path, newVal, oldVal) {
-      obj.___emit('change', obj, path, newVal, oldVal)
+      obj.___emit('change', path, newVal, oldVal)
     }
   })
 
@@ -63,8 +63,8 @@ function template(states, tpl, opts) {
       }
     }))
 
-    s.___on('change', function(obj, path, newVal) {
-      if ((obj != s) || (! refs[path]))
+    s.___on('change', function(path, newVal) {
+      if ((this != s) || (! refs[path]))
         return;
 
       timer = timer || requestAnimationFrame(function() {
@@ -121,15 +121,17 @@ function __clone() {
 function __initWatched(obj) {
   var on = _on.bind(obj)
     , emit = _emit.bind(obj)
+    , at = _getPath.bind(obj)
 
   // If user is using reserved name, don't clobber it
   obj.on || owatch._makeHidden(obj, 'on', on)
-  obj.extend || owatch._makeHidden(obj, 'extend', obj.___extend)
+  obj.at || owatch._makeHidden(obj, 'getPath', at)
+  obj.update || owatch._makeHidden(obj, 'update', obj.___update)
 
   // Fallbacks if user is using reserved name
   owatch._makeHidden(obj, '___on', on)
+  owatch._makeHidden(obj, '___at', at)
   owatch._makeHidden(obj, '___emit', emit)
-  owatch._makeHidden(obj, '___extend', obj.___extend)
 }
 
 
@@ -149,7 +151,7 @@ function _emit(evt) {
     , listeners = (this.__listeners||{})[evt] || []
 
   for (var i=0, len=listeners.length; i<len; i++) {
-    listeners[i].apply(null, args)
+    listeners[i].apply(this, args)
   }
 }
 
