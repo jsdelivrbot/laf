@@ -12,10 +12,11 @@ function owatch(obj, handlers, parentHandlers, path) {
   handlers.init || (handlers.init = noop)
   parentHandlers = extend({}, {get:noop, set:noop}, parentHandlers)
 
-  if (obj.__values === undefined) {
-    makeHidden(obj, '__values', {})
-    makeHidden(obj, '__fullPath', path)
-    makeHidden(obj, '__fullPathStr', path.join('.'))
+  if (obj.___values === undefined) {
+    makeHidden(obj, '___values', {})
+    makeHidden(obj, '___fullPath', path)
+    makeHidden(obj, '___fullPathStr', path.join('.'))
+    makeHidden(obj, '___extend', _extend.bind(this))
     handlers.init(obj)
   }
 
@@ -23,65 +24,75 @@ function owatch(obj, handlers, parentHandlers, path) {
   if (path.length > MAX_DEPTH)
     return;
 
-  Object.keys(obj).forEach(function(key) {
-    // Short-circuit if we've already taken over this property
-    if (typeof(obj.__values[key]) != 'undefined')
-      return;
-
-    // Edge-case: don't error if property is immutable
-    var descriptor = Object.getOwnPropertyDescriptor(obj, key)
-    if (descriptor && descriptor.writable === false)
-      return;
-
-    // Store the actual value for retrieval
-    obj.__values[key] = obj[key]
-
-    // Replace this value w/ getter/setter
-    listen(obj, key, handlers, parentHandlers)
-
-    // Descend into objects
-    if (typeof(obj.__values[key]) == 'object') {
-      var childParentHandlers = {
-        get: function(__, childFullPathStr, value) {
-          var _path = obj.__fullPathStr
-            ? childFullPathStr.replace(obj.__fullPathStr+'.', '')
-            : childFullPathStr
-
-          handlers.get(obj, _path, value)
-          parentHandlers.get(obj, childFullPathStr, value)
-        }
-
-        ,set: function(__, childFullPathStr, newValue, oldValue) {
-          var _path = obj.__fullPathStr
-            ? childFullPathStr.replace(obj.__fullPathStr+'.', '')
-            : childFullPathStr
-
-          handlers.set(obj, _path, newValue, oldValue)
-          parentHandlers.set(obj, childFullPathStr, newValue, oldValue)
-        }
-      }
-
-      owatch(obj.__values[key], handlers, childParentHandlers, path.concat(key))
-    }
-  })
+  _wrapKeys()
 
   return obj
+
+  function _wrapKeys() {
+    Object.keys(obj).forEach(function(key) {
+      // Short-circuit if we've already taken over this property
+      if (typeof(obj.___values[key]) != 'undefined')
+        return;
+
+      // Edge-case: don't error if property is immutable
+      var descriptor = Object.getOwnPropertyDescriptor(obj, key)
+      if (descriptor && descriptor.writable === false)
+        return;
+
+      // Store the actual value for retrieval
+      obj.___values[key] = obj[key]
+
+      // Replace this value w/ getter/setter
+      _listen(obj, key, handlers, parentHandlers)
+
+      // Descend into objects
+      if (typeof(obj.___values[key]) == 'object') {
+        var childParentHandlers = {
+          get: function(___, childFullPathStr, value) {
+            var _path = obj.___fullPathStr
+              ? childFullPathStr.replace(obj.___fullPathStr+'.', '')
+              : childFullPathStr
+
+            handlers.get(obj, _path, value)
+            parentHandlers.get(obj, childFullPathStr, value)
+          }
+
+          ,set: function(___, childFullPathStr, newValue, oldValue) {
+            var _path = obj.___fullPathStr
+              ? childFullPathStr.replace(obj.___fullPathStr+'.', '')
+              : childFullPathStr
+
+            handlers.set(obj, _path, newValue, oldValue)
+            parentHandlers.set(obj, childFullPathStr, newValue, oldValue)
+          }
+        }
+
+        owatch(obj.___values[key], handlers, childParentHandlers, path.concat(key))
+      }
+    })
+  }
+
+  function _extend(o) {
+    obj = extend(obj, o)
+    _wrapKeys()
+    return obj
+  }
 }
 
 
-function listen(obj, key, handlers, parentHandlers) {
+function _listen(obj, key, handlers, parentHandlers) {
   Object.defineProperty(obj, key, {
     enumerable: true
 
     ,get: function() {
-      var val = obj.__values[key]
+      var val = obj.___values[key]
 
       if (typeof(val) == 'function')
         val = val.call(obj);
 
       try {
         handlers.get(obj, key, val)
-        parentHandlers.get(obj, [obj.__fullPathStr, key].join('.'), val)
+        parentHandlers.get(obj, [obj.___fullPathStr, key].join('.'), val)
       }
       catch (ex) { console.error('Exception in GET handler for ' + key, ex)}
 
@@ -89,20 +100,20 @@ function listen(obj, key, handlers, parentHandlers) {
     }
 
     ,set: function(newValue) {
-      var oldValue = obj.__values[key]
+      var oldValue = obj.___values[key]
 
       // Short-curcuit if no change
       if (deepEquals(oldValue, newValue))
         return;
 
       if (typeof(newValue) == 'object')
-        newValue = owatch(newValue, handlers, obj.__fullPath.concat(key))
+        newValue = owatch(newValue, handlers, obj.___fullPath.concat(key))
 
-      obj.__values[key] = newValue
+      obj.___values[key] = newValue
 
       try {
         handlers.set(obj, key, newValue, oldValue)
-        parentHandlers.set(obj, obj.__fullPathStr, newValue, oldValue)
+        parentHandlers.set(obj, obj.___fullPathStr, newValue, oldValue)
       }
       catch (ex) { console.error('Exception in SET handler for ' + key, ex)}
     }

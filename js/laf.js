@@ -25,48 +25,66 @@ function state(obj) {
 }
 
 
-function addTemplate(container, tpl, mkctx, partials) {
+function template(states, tpl, opts) {
   var refs = {}
     , parentDiv = document.createElement('div')
-    , self = this
+    , refcatchers = []
     , timer
 
-  if (jQuery && jQuery.fn && jQuery.fn.jquery && (container instanceof jQuery))
-    container = container[0];
+  if (! (states && tpl))
+    throw new Error("Please provide a state[s] and tpl");
 
-  container.appendChild(parentDiv)
+  if (! (states.___values || (states instanceof Array)))
+    throw new Error("state[s] should be a laf object or an array of laf objects");
 
-  mkctx = mkctx || __identity
+  if (states.___values)
+    states = [states];
+
+  if (jQuery && jQuery.fn && jQuery.fn.jquery && (opts.container instanceof jQuery))
+    opts.container = opts.container[0];
+
+  opts.container = opts.container
+    ? opts.container.appendChild(parentDiv)
+    : parentDiv
+
+  opts.mkctx = opts.mkctx || __mkctx
   tpl = Hogan.compile(tpl)
 
-  var _refcatch = extend(true, {}, this)
+  states.forEach(function(s) {
+    var _refcatch = extend(true, {}, s)
 
-  var refcatcher = owatch(_refcatch, {
-    get: function(obj, path, val) {
-      if (obj == _refcatch)
-        refs[path] = true;
-    }
-  })
+    refcatchers.push(owatch(_refcatch, {
+      get: function(obj, path, val) {
+        // TODO: refs are not grouped by state, so we could render more
+        //       often than we need to. doesn't matter too much b/c
+        //       rendering is cheap
+        if (obj == _refcatch)
+          refs[path] = true;
+      }
+    }))
 
-  this.___on('change', function(obj, path, newVal) {
-    if ((obj != self) || (! refs[path]))
-      return;
+    s.___on('change', function(obj, path, newVal) {
+      if ((obj != s) || (! refs[path]))
+        return;
 
-    timer = timer || requestAnimationFrame(function() {
-      // TODO: should probably disable setters altogether here?
-      _render(extend(true, {}, self), parentDiv, tpl, mkctx, partials)
-      timer = null
+      timer = timer || requestAnimationFrame(function() {
+        // TODO: should probably disable setters altogether here?
+        _render(states, parentDiv, tpl, opts)
+        timer = null
+      })
     })
   })
 
   // Initial render will flag all getters called on state
-  _render(refcatcher, parentDiv, tpl, mkctx, partials)
+  _render(refcatchers, parentDiv, tpl, extend({}, opts, {container:parentDiv}))
 
   return parentDiv
 }
 
-function _render(state, container, tpl, mkctx, partials) {
-  var html = tpl.render(mkctx(state), partials)
+function _render(states, container, tpl, opts) {
+  var clonedStates = states.map(extend.bind(null, true, {}))
+    , ctx = opts.mkctx.apply(null, clonedStates)
+    , html = tpl.render(ctx, opts.partials)
 
   if (container) {
     var oldDOM = document.createElement('div')
@@ -87,7 +105,14 @@ function _render(state, container, tpl, mkctx, partials) {
 }
 
 
-function __identity(x) { return x }
+function __mkctx() {
+  if (arguments.length == 1)
+    return arguments[0];
+
+  var args = Array.prototype.slice.apply(arguments)
+  args.unshift(true, {})
+  return extend.apply(null, args)
+}
 
 function __clone() {
   return extend(true, {}, this)
@@ -96,20 +121,15 @@ function __clone() {
 function __initWatched(obj) {
   var on = _on.bind(obj)
     , emit = _emit.bind(obj)
-    , atpl = addTemplate.bind(obj)
-    , get = _getPath.bind(obj)
-    , set = _setPath.bind(obj)
 
   // If user is using reserved name, don't clobber it
   obj.on || owatch._makeHidden(obj, 'on', on)
-  obj.addTemplate || owatch._makeHidden(obj, 'addTemplate', atpl)
+  obj.extend || owatch._makeHidden(obj, 'extend', obj.___extend)
 
   // Fallbacks if user is using reserved name
   owatch._makeHidden(obj, '___on', on)
   owatch._makeHidden(obj, '___emit', emit)
-  owatch._makeHidden(obj, '___get', get)
-  owatch._makeHidden(obj, '___set', set)
-  owatch._makeHidden(obj, '___addTemplate', atpl)
+  owatch._makeHidden(obj, '___extend', obj.___extend)
 }
 
 
@@ -146,13 +166,18 @@ function _getPath(path) {
 function _setPath(path, newValue) {
   var ind = path.lastIndexOf('.')
     , parentPath = path.substr(0, ind)
-    , key = patph.substr(ind)
+    , key = path.substr(ind)
     , obj = _getPath.call(this, parentPath)
 
   obj[key] = newValue
 }
 
+function _extend(obj) {
+  return owatch(extend(this, obj))
+}
+
 
 
 module.exports.state = module.exports = state
+module.exports.template = template
 
