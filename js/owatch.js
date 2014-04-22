@@ -111,8 +111,12 @@ function _listen(obj, key, handlers, parentHandlers, emitNow) {
   function _set(newValue, oldValue) {
     var newv = newValue
 
-    if (newValue && typeof(newValue) == 'function')
+    if (typeof(newValue) == 'function')
       newv = function() { return newValue.apply(obj, arguments) }
+
+    if (newValue && (newValue instanceof Array)) {
+      // override push(), pop(), shift(), unshift(), splice(), [... ?]
+    }
 
     // Short-curcuit if no change
     if (deepEquals(oldValue, newv))
