@@ -82,8 +82,7 @@ function template(states, tpl, opts) {
 }
 
 function _render(states, container, tpl, opts) {
-  var clonedStates = states.map(extend.bind(null, true, {}))
-    , ctx = opts.mkctx.apply(null, clonedStates)
+  var ctx = opts.mkctx.apply(null, states)
     , html = tpl.render(ctx, opts.partials)
 
   if (container) {
@@ -110,6 +109,7 @@ function __mkctx() {
     return arguments[0];
 
   var args = Array.prototype.slice.apply(arguments)
+  args = args.map(function(x){ return x.___values||x })
   args.unshift(true, {})
   return extend.apply(null, args)
 }
@@ -136,9 +136,9 @@ function __initWatched(obj) {
 
 
 function _on(evt, listener) {
-  this.__listeners || owatch._makeHidden(this, '__listeners', {})
-  this.__listeners[evt] || (this.__listeners[evt] = [])
-  this.__listeners[evt].push(listener)
+  this.___listeners || owatch._makeHidden(this, '___listeners', {})
+  this.___listeners[evt] || (this.___listeners[evt] = [])
+  this.___listeners[evt].push(listener)
   return this
 }
 
@@ -148,7 +148,7 @@ function _off(evt, listener) {
 
 function _emit(evt) {
   var args = Array.prototype.slice.call(arguments, 1)
-    , listeners = (this.__listeners||{})[evt] || []
+    , listeners = (this.___listeners||{})[evt] || []
 
   for (var i=0, len=listeners.length; i<len; i++) {
     listeners[i].apply(this, args)
