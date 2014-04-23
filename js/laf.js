@@ -43,6 +43,8 @@ function template(states, tpl, opts) {
   if (jQuery && jQuery.fn && jQuery.fn.jquery && (opts.container instanceof jQuery))
     opts.container = opts.container[0];
 
+  parentDiv.style.display = 'inline'
+
   opts.container = opts.container
     ? opts.container.appendChild(parentDiv)
     : parentDiv
@@ -172,10 +174,6 @@ function _setPath(path, newValue) {
     , obj = _getPath.call(this, parentPath)
 
   obj[key] = newValue
-}
-
-function _extend(obj) {
-  return owatch(extend(this, obj))
 }
 
 
