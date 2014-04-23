@@ -73,8 +73,19 @@ function owatch(obj, handlers, parentHandlers, path) {
     })
   }
 
-  function _update(o) {
-    obj = extend(obj, o)
+  function _update(insertOnly, newVals) {
+    if (!newVals)
+      (newVals = insertOnly), (insertOnly=false);
+
+    if (insertOnly) {
+      var self = this
+      Object.keys(newVals).forEach(function(key) {
+        if (typeof self[key] !== 'undefined')
+          delete newVals[key];
+      })
+    }
+
+    obj = extend(obj, newVals)
     _wrapKeys(true)
     return obj
   }
