@@ -16,7 +16,7 @@ function owatch(obj, handlers, parentHandlers, path) {
     makeHidden(obj, '___values', {})
     makeHidden(obj, '___fullPath', path)
     makeHidden(obj, '___fullPathStr', path.join('.'))
-    makeHidden(obj, '___update', _update.bind(this))
+    makeHidden(obj, '___update', _update.bind(obj))
     handlers.init(obj)
   }
 
