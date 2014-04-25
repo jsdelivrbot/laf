@@ -78,13 +78,16 @@ function template(states, tpl, opts) {
   })
 
   // Initial render will flag all getters called on state
-  _render(refcatchers, parentDiv, tpl, extend({}, opts, {container:parentDiv}))
+  _render(refcatchers, parentDiv, tpl, extend({}, opts, {container:parentDiv,
+                                                         _refCtx: true}))
 
   return parentDiv
 }
 
 function _render(states, container, tpl, opts) {
-  var ctx = opts.mkctx.apply(null, states)
+  var _states = opts._refCtx ? states : states.map(extend.bind(null, true, {}))
+
+  var ctx = opts.mkctx.apply(null, _states)
     , html = tpl.render(ctx, opts.partials)
 
   if (container) {
