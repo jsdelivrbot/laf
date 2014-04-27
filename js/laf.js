@@ -40,7 +40,7 @@ function template(states, tpl, opts) {
   if (states.___values)
     states = [states];
 
-  if (jQuery && jQuery.fn && jQuery.fn.jquery && (opts.container instanceof jQuery))
+  if (opts.container && opts.container.jquery)
     opts.container = opts.container[0];
 
   parentDiv.style.display = 'inline'
@@ -183,4 +183,5 @@ function _setPath(path, newValue) {
 
 module.exports.state = module.exports = state
 module.exports.template = template
+module.exports._makeHidden = owatch._makeHidden
 
