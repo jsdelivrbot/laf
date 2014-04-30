@@ -10,7 +10,7 @@ var owatch = require('./owatch')
 var differ = new diffDOM()
 
 
-function state(obj) {
+function mkstate(obj) {
   obj || (obj = {})
 
   var watched = owatch(obj, {
@@ -29,6 +29,7 @@ function template(states, tpl, opts) {
   var refs = {}
     , parentDiv = document.createElement('div')
     , refcatchers = []
+    , currentHTML = ''
     , timer
 
   if (! (states && tpl))
@@ -52,6 +53,8 @@ function template(states, tpl, opts) {
   opts.mkctx = opts.mkctx || __mkctx
   tpl = Hogan.compile(tpl)
 
+  states = states.map(mkstate)
+
   states.forEach(function(s) {
     var _refcatch = extend(true, {}, s)
 
@@ -63,6 +66,8 @@ function template(states, tpl, opts) {
         if (obj == _refcatch)
           refs[path] = true;
       }
+
+      ,set: null // disable setters altogether
     }))
 
     s.___on('change', function(path, newVal) {
@@ -71,29 +76,33 @@ function template(states, tpl, opts) {
 
       timer = timer || requestAnimationFrame(function() {
         // TODO: should probably disable setters altogether here?
-        _render(states, parentDiv, tpl, opts)
+        currentHTML = _render(states, parentDiv, tpl, opts, currentHTML)
         timer = null
       })
     })
   })
 
   // Initial render will flag all getters called on state
-  _render(refcatchers, parentDiv, tpl, extend({}, opts, {container:parentDiv,
-                                                         _refCtx: true}))
+  currentHTML = _render(refcatchers, parentDiv, tpl, extend({}, opts, {container:parentDiv,
+                                                                       _refCtx: true}))
 
   return parentDiv
 }
 
-function _render(states, container, tpl, opts) {
-  var _states = opts._refCtx ? states : states.map(extend.bind(null, true, {}))
+function _render(states, container, tpl, opts, oldHTML) {
+  var _states = opts._refCtx 
+        ? states 
+        : states.map(function(x){ return extend(true, {}, x) })
+
+  // TODO: disable 2nd condition setters? (1st condition are already disabled)
 
   var ctx = opts.mkctx.apply(null, _states)
-    , html = tpl.render(ctx, opts.partials)
+  var html = tpl.render(ctx, opts.partials)
 
   if (container) {
     var oldDOM = document.createElement('div')
     var newDOM = document.createElement('div')
-    oldDOM.innerHTML = container.innerHTML
+    oldDOM.innerHTML = oldHTML || ''
     newDOM.innerHTML = html
 
     var diff = differ.diff(oldDOM, newDOM)
@@ -181,7 +190,7 @@ function _setPath(path, newValue) {
 
 
 
-module.exports.state = module.exports = state
+module.exports.state = module.exports = mkstate
 module.exports.template = template
 module.exports._makeHidden = owatch._makeHidden
 
