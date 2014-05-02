@@ -1,7 +1,7 @@
 var EventEmitter = require('events').EventEmitter
   , extend = require('extend')
 
-var MAX_DEPTH = 32
+var MAX_DEPTH = 100
 
 
 function owatch(obj, handlers, parentHandlers, path) {
@@ -93,7 +93,7 @@ function owatch(obj, handlers, parentHandlers, path) {
 
 
 function _listen(obj, key, handlers, parentHandlers, emitNow) {
-  Object.defineProperty(obj, key, {
+  var prop = {
     enumerable: true
 
     ,get: function() {
@@ -113,7 +113,12 @@ function _listen(obj, key, handlers, parentHandlers, emitNow) {
 
       _set(newValue, oldValue)
     }
-  })
+  }
+
+  if (handlers.set===null) delete prop.set;
+  if (handlers.get===null) delete prop.get;
+
+  Object.defineProperty(obj, key, prop)
 
   if (emitNow)
     _set(obj.___values[key], undefined);
@@ -147,14 +152,15 @@ function _listen(obj, key, handlers, parentHandlers, emitNow) {
 }
 
 
-function makeHidden(object, property, value) {
+function makeHidden(object, property, value, writable) {
   // Use the existing value if the new value isn't specified
   value = (typeof value == 'undefined') ? object[property] : value;
 
   // Create the hidden property
   Object.defineProperty(object, property, {
     value: value,
-    enumerable : false
+    enumerable : false,
+    writable: !!writable
   });
 
   return object;
