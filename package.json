@@ -21,7 +21,7 @@
     "extend": "1.2.1",
     "hogan.js": "2.0.0",
     "diffDOM": "git://github.com/fiduswriter/diffDOM.git#5b628f8e3e",
-    "observed": "0.0.3"
+    "observed": "git://github.com/runningskull/observed.git#object-keys"
   },
   "devDependencies": {
     "browserify": "~3.43.0"
