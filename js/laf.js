@@ -39,7 +39,10 @@ function template(states, tpl, opts) {
   //       rendering on every change. But rendering is relatively cheap (since
   //       we don't update DOM if we don't have to), so it's left out for now
   observed(states).on('changed', function() {
-    currentHTML = _render(states, parentDiv, tpl, opts, currentHTML)
+    renderTimeout || (renderTimeout = requestAnimationFrame(function() {
+      currentHTML = _render(states, parentDiv, tpl, opts, currentHTML)
+      renderTimeout = null
+    }));
   })
 
   currentHTML = _render(states, parentDiv, tpl, opts, '')
