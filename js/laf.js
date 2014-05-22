@@ -40,8 +40,8 @@ function template(states, tpl, opts) {
   //       we don't update DOM if we don't have to), so it's left out for now
   observed(states).on('changed', function() {
     renderTimeout || (renderTimeout = requestAnimationFrame(function() {
-      currentHTML = _render(states, parentDiv, tpl, opts, currentHTML)
       renderTimeout = null
+      currentHTML = _render(states, parentDiv, tpl, opts, currentHTML)
     }));
   })
 
@@ -53,22 +53,31 @@ function template(states, tpl, opts) {
 
 function _render(states, container, tpl, opts, oldHTML) {
   // TODO: should probably make these immutable
+  // TODO: cloning here causes non-enumerable properties to be lost
   var _states = states.map(_deepClone)
 
   var ctx = opts.mkctx.apply(null, _states)
   var html = tpl.render(ctx, opts.partials)
 
+  if (window.__DEBUG__)
+    debugger
+
   if (container) {
-    var oldDOM = document.createElement('div')
-      , newDOM = document.createElement('div')
+    if (!opts.__large__) {
+      var oldDOM = document.createElement('div')
+        , newDOM = document.createElement('div')
 
-    oldDOM.innerHTML = oldHTML || ''
-    newDOM.innerHTML = html
+      oldDOM.innerHTML = oldHTML || ''
+      newDOM.innerHTML = html
 
-    var diff = differ.diff(oldDOM, newDOM)
+      var diff = differ.diff(oldDOM, newDOM)
 
-    if (diff.length) {
-      differ.apply(container, diff)
+      if (diff.length) {
+        differ.apply(container, diff)
+        container.dispatchEvent(new Event('render'))
+      }
+    } else {
+      container.innerHTML = html
       container.dispatchEvent(new Event('render'))
     }
   }
